@@ -1,13 +1,24 @@
-const capitalize = (str: string) => `${str.charAt(0).toUpperCase()}${str.slice(1)}`;
+const capitalize = <T extends string>(str: T) => (
+  `${str.charAt(0).toUpperCase()}${str.slice(1)}` as Capitalize<T>
+);
 
 type FormContentAttributeNames = 'action' | 'enctype' | 'method' | 'target';
-type SubmitterButtonContentAttributeNames = `form${Capitalize<FormContentAttributeNames>}`;
 
 class Submission {
   declare form: HTMLFormElement;
 
+  /**
+   * The "submitter button" must be a <button>, an <input>, or null.
+   * The HTML Standard didn't state this directly, but we can still tell this by reading
+   * through the elements and functions that can trigger a submission in the standard.
+   * @see [Concept submit button | HTML Standard]{@link https://html.spec.whatwg.org/multipage/forms.html#concept-submit-button}
+   */
   declare submitterButton: HTMLButtonElement | HTMLInputElement | null;
 
+  /**
+   * Parse the basic facilities that will be frequently used in the submission.
+   * @see [Form submission algorithm | HTML Standard]{@link https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#form-submission-algorithm}
+   */
   constructor(form: HTMLFormElement, submitter: HTMLElement | null) {
     this.form = form;
 
@@ -23,7 +34,7 @@ class Submission {
   getAttribute(name: FormContentAttributeNames): string {
     const { submitterButton, form } = this;
     if (submitterButton && submitterButton.hasAttribute(`form${name}`)) {
-      const overrideValue = submitterButton[`form${capitalize(name)}` as SubmitterButtonContentAttributeNames];
+      const overrideValue = submitterButton[`form${capitalize(name)}`];
       if (overrideValue) return overrideValue;
     }
     return form[name];
@@ -73,7 +84,7 @@ class Submission {
     const action = this.getAttribute('action');
     const actionURL = new URL(action, document.URL);
 
-    // Not supported.
+    // Only 'http' and 'https' schemes are supported.
     if (!/^https?:$/.test(actionURL.protocol)) return null;
 
     switch (this.getAttribute('method')) {
@@ -113,6 +124,10 @@ class Submission {
           body,
         });
       }
+
+      /**
+       * Method with no request to send ('dialog' method) or unsupported.
+       */
       default:
         return null;
     }
